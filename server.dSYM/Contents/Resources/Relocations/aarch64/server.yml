@@ -1,0 +1,14 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/saif/VScodeProjects/OS Assignment/ex1/server'
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _is_digit, symObjAddr: 0x0, symBinAddr: 0x100003B20, symSize: 0x68 }
+  - { offsetInCU: 0x41, offset: 0x41, size: 0x8, addend: 0x0, symName: _is_digit, symObjAddr: 0x0, symBinAddr: 0x100003B20, symSize: 0x68 }
+  - { offsetInCU: 0x69, offset: 0x69, size: 0x8, addend: 0x0, symName: _powi, symObjAddr: 0x68, symBinAddr: 0x100003B88, symSize: 0x64 }
+  - { offsetInCU: 0xC9, offset: 0xC9, size: 0x8, addend: 0x0, symName: _is_integer, symObjAddr: 0xCC, symBinAddr: 0x100003BEC, symSize: 0xE4 }
+  - { offsetInCU: 0x11B, offset: 0x11B, size: 0x8, addend: 0x0, symName: _process_args, symObjAddr: 0x1B0, symBinAddr: 0x100003CD0, symSize: 0xEC }
+  - { offsetInCU: 0x16D, offset: 0x16D, size: 0x8, addend: 0x0, symName: _run_interactive, symObjAddr: 0x29C, symBinAddr: 0x100003DBC, symSize: 0x28 }
+  - { offsetInCU: 0x191, offset: 0x191, size: 0x8, addend: 0x0, symName: _run_listen, symObjAddr: 0x2C4, symBinAddr: 0x100003DE4, symSize: 0x3C }
+  - { offsetInCU: 0x1B5, offset: 0x1B5, size: 0x8, addend: 0x0, symName: _usage, symObjAddr: 0x300, symBinAddr: 0x100003E20, symSize: 0x1C }
+  - { offsetInCU: 0x1CA, offset: 0x1CA, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x31C, symBinAddr: 0x100003E3C, symSize: 0xC8 }
+...
