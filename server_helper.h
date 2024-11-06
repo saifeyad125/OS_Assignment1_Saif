@@ -234,6 +234,7 @@ FwRule* process_rule_cmd(char* buffer)
         printf("Memory allocation failed\n");
         exit(1);
     }
+    
 
     //we give them default values first
     strcpy(fwRule->ip1, "");
