@@ -103,13 +103,12 @@ void add_to_Rule_list(FwRule* fwRule, FwRule* fwRuleHead)
         fwRuleHead = fwRule;
         return;
     }
-    FwRequest* cur = fwRuleHead;
+    FwRule* cur = fwRuleHead;
     while (cur->pNext != NULL)
     {
         cur = cur->pNext;
     }
     cur->pNext = fwRule;
-    */
    printf("add_to_Rule_list\n");
    return;
 }
@@ -130,8 +129,8 @@ bool isValidIP(FwRule* fwRule){
     int p2split[4];
 
     //here we use scanf to split them into 4 parts so we can compare size
-    if (scanf(firstIP, "%d.%d.%d.%d", &p1split[0], &p1split[1], &p1split[2], &p1split[3]) ==4 &
-    scanf(secIP, "%d.%d.%d.%d", &p2split[0], &p2split[1], &p2split[2], &p2split[3]) == 4)
+    if (sscanf(firstIP, "%d.%d.%d.%d", &p1split[0], &p1split[1], &p1split[2], &p1split[3]) ==4 &
+    sscanf(secIP, "%d.%d.%d.%d", &p2split[0], &p2split[1], &p2split[2], &p2split[3]) == 4)
     {
         for (int i = 0; i < 4; i++)
         {
@@ -227,7 +226,7 @@ bool process_args(int argc, char** argv, CmdArg* pcmd)
     return bSucess;
 }
 
-FwRule* process_req_cmd(char* buffer)
+FwRule* process_rule_cmd(char* buffer)
 {
     FwRule* fwRule = (FwRule*)malloc(sizeof(FwRule));
     if (fwRule == NULL)
@@ -235,9 +234,66 @@ FwRule* process_req_cmd(char* buffer)
         printf("Memory allocation failed\n");
         exit(1);
     }
-    char* pch;
 
+    //we give them default values first
+    strcpy(fwRule->ip1, "");
+    strcpy(fwRule->ip2, "");
+    fwRule->port1 = 0;
+    fwRule->port2 = 0;
+    
+    //here we get the pointer where we should split the raw command
+    char* pch = strtok(buffer, " ");
+    if (pch == NULL)
+    {
+        printf("Invalid Rule\n");
+        free(fwRule);
+        return NULL;
+    }
 
+    //we get the first ip
+    char iPcombined[30]; 
+    strcpy(iPcombined, pch);
+    char* dashPos = strchr(iPcombined, '-');
+    //this would mean that we have 2 ip addresses
+    if (dashPos != NULL){
+        //this marks the end of the first ip by adding a null terminator
+       *dashPos = '\0'; 
+       strcpy(fwRule->ip1, iPcombined);
+       strcpy(fwRule->ip2, dashPos + 1);
+    }
+    else{
+        //this means we only have one ip address
+        strcpy(fwRule->ip1, iPcombined);
+        strcpy(fwRule->ip2, iPcombined);
+    }
+
+    //same thing but for ports
+    pch = strtok(NULL, " ");
+    if (pch == NULL)
+    {
+        printf("Invalid Rule\n");
+        free(fwRule);
+        return NULL;
+    }
+
+    char portCombined[11];
+    strcpy(portCombined, pch);
+    dashPos = strchr(portCombined, '-');
+    //this means we have 2 ports
+    if (dashPos != NULL){
+        *dashPos = '\0';
+        fwRule->port1 = atoi(portCombined);
+        fwRule -> port2 = atoi(dashPos + 1);
+        }
+    //this means we have 1 port
+    else
+    {
+        //atoi just converts string to int
+        fwRule->port1 = atoi(portCombined);
+        fwRule->port2 = atoi(portCombined);
+    }
+    
+    
 
 
 
@@ -253,10 +309,8 @@ void run_add_cmd(FwRequest* fwReq, FwRule* fwRuleHead)
     
     printf("enter command\n");
     fgets(buffer, 255, stdin);
-    FwRule* fwRule = process_req_cmd(buffer);
+    FwRule* fwRule = process_rule_cmd(buffer);
 
-
-    FwRule* fwRule = (FwRule*)malloc(sizeof(FwRule));
     if (isValidRule(fwRule)){
         add_to_rule_list(fwRule, fwRuleHead);
         printf("Rule added\n");
