@@ -25,8 +25,8 @@ typedef struct FwRule
 {
     //ipAdress 1, 2
     //port 1, 2
-    char ip1[15];
-    char ip2[15];
+    unsigned char ip1[15];
+    unsigned char ip2[15];
     int port1;
     int port2;
 
@@ -95,7 +95,7 @@ void add_to_Req_list(FwRequest* fwReq, FwRequest* fwReqHead)
 }
 
 //adds a rule to the end of the linked list
-void add_to_Rule_list(FwRule* fwRule, FwRule* fwRuleHead)
+void add_to_rule_list(FwRule* fwRule, FwRule* fwRuleHead)
 {
     
     if (fwRuleHead == NULL)
@@ -109,65 +109,33 @@ void add_to_Rule_list(FwRule* fwRule, FwRule* fwRuleHead)
         cur = cur->pNext;
     }
     cur->pNext = fwRule;
-   printf("add_to_Rule_list\n");
+   printf("add_to_rule_list\n");
    return;
 }
 
 
 bool isValidIP(FwRule* fwRule){
-    char firstIP[15];
-    char secIP[15];
     bool smaller = false;
-    bool correctSyntax = false;
-    bool correctValues = false;
+    bool correctValues = true;
 
-    //we do this to avoid changing the original values
-    strcpy(firstIP, fwRule->ip1);
-    strcpy(secIP, fwRule->ip2);
-
-    int p1split[4];
-    int p2split[4];
-
-    //here we use scanf to split them into 4 parts so we can compare size
-    if (sscanf(firstIP, "%d.%d.%d.%d", &p1split[0], &p1split[1], &p1split[2], &p1split[3]) ==4 &
-    sscanf(secIP, "%d.%d.%d.%d", &p2split[0], &p2split[1], &p2split[2], &p2split[3]) == 4)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            if (p1split[i] < 0 || p1split[i] > 255 || p2split[i] < 0 || p2split[i] > 255)
-            {
-                correctValues = false;
-                break;
-            }
-            else{
-                correctValues = true;
-            }
+    for (int i = 0; i < 4; i++) {
+        if (fwRule->ip1[i] < 0 || fwRule->ip1[i] > 255 || fwRule->ip2[i] < 0 || fwRule->ip2[i] > 255) {
+            correctValues = false;
+            break;
         }
-
-        correctSyntax = true;
-    }
-
-
-    if(correctSyntax && correctValues)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            if (p1split[i] < p2split[i])
-            {
-                smaller = true;
-                break;
-            }
-            else if (p1split[i] > p2split[i])
-            {
-                break;
-            }
+        if (fwRule->ip1[i] < fwRule->ip2[i]) {
+            smaller = true;
+            break;
+        } else if (fwRule->ip1[i] > fwRule->ip2[i]) {
+            smaller = false;
+            break;
         }
     }
-    return smaller;
 
-
-
+    return smaller && correctValues;
 }
+
+
 
 bool isValidPort(FwRule* fwRule){
     bool correctValues = false;
@@ -229,78 +197,68 @@ bool process_args(int argc, char** argv, CmdArg* pcmd)
 FwRule* process_rule_cmd(char* buffer)
 {
     FwRule* fwRule = (FwRule*)malloc(sizeof(FwRule));
-    if (fwRule == NULL)
-    {
+    if (fwRule == NULL) {
         printf("Memory allocation failed\n");
         exit(1);
     }
-    
+    fwRule->pNext = NULL;
 
-    //we give them default values first
-    strcpy(fwRule->ip1, "");
-    strcpy(fwRule->ip2, "");
+    // Initialize the fields
+    memset(fwRule->ip1, 0, sizeof(fwRule->ip1));
+    memset(fwRule->ip2, 0, sizeof(fwRule->ip2));
     fwRule->port1 = 0;
     fwRule->port2 = 0;
-    
-    //here we get the pointer where we should split the raw command
+
+    // Split the input string by spaces
     char* pch = strtok(buffer, " ");
-    if (pch == NULL)
-    {
+    if (pch == NULL) {
         printf("Invalid Rule\n");
         free(fwRule);
         return NULL;
     }
 
-    //we get the first ip
-    char iPcombined[30]; 
-    strcpy(iPcombined, pch);
-    char* dashPos = strchr(iPcombined, '-');
-    //this would mean that we have 2 ip addresses
-    if (dashPos != NULL){
-        //this marks the end of the first ip by adding a null terminator
-       *dashPos = '\0'; 
-       strcpy(fwRule->ip1, iPcombined);
-       strcpy(fwRule->ip2, dashPos + 1);
-    }
-    else{
-        //this means we only have one ip address
-        strcpy(fwRule->ip1, iPcombined);
-        strcpy(fwRule->ip2, iPcombined);
-    }
-
-    //same thing but for ports
-    pch = strtok(NULL, " ");
-    if (pch == NULL)
-    {
-        printf("Invalid Rule\n");
-        free(fwRule);
-        return NULL;
-    }
-
-    char portCombined[11];
-    strcpy(portCombined, pch);
-    dashPos = strchr(portCombined, '-');
-    //this means we have 2 ports
-    if (dashPos != NULL){
+    // Process the IP address part
+    char* dashPos = strchr(pch, '-');
+    if (dashPos != NULL) {
         *dashPos = '\0';
-        fwRule->port1 = atoi(portCombined);
-        fwRule -> port2 = atoi(dashPos + 1);
+        if (sscanf(pch, "%hhu.%hhu.%hhu.%hhu", &fwRule->ip1[0], &fwRule->ip1[1], &fwRule->ip1[2], &fwRule->ip1[3]) != 4) {
+            printf("Invalid IP address: %s\n", pch);
+            free(fwRule);
+            return NULL;
         }
-    //this means we have 1 port
-    else
-    {
-        //atoi just converts string to int
-        fwRule->port1 = atoi(portCombined);
-        fwRule->port2 = atoi(portCombined);
+        if (sscanf(dashPos + 1, "%hhu.%hhu.%hhu.%hhu", &fwRule->ip2[0], &fwRule->ip2[1], &fwRule->ip2[2], &fwRule->ip2[3]) != 4) {
+            printf("Invalid IP address: %s\n", dashPos + 1);
+            free(fwRule);
+            return NULL;
+        }
+    } else {
+        if (sscanf(pch, "%hhu.%hhu.%hhu.%hhu", &fwRule->ip1[0], &fwRule->ip1[1], &fwRule->ip1[2], &fwRule->ip1[3]) != 4) {
+            printf("Invalid IP address: %s\n", pch);
+            free(fwRule);
+            return NULL;
+        }
+        memcpy(fwRule->ip2, fwRule->ip1, sizeof(fwRule->ip1));
     }
-    
-    
 
-
-
+    // Process the port part
+    pch = strtok(NULL, " ");
+    if (pch != NULL) {
+        dashPos = strchr(pch, '-');
+        if (dashPos != NULL) {
+            *dashPos = '\0';
+            fwRule->port1 = atoi(pch);
+            fwRule->port2 = atoi(dashPos + 1);
+        } else {
+            fwRule->port1 = atoi(pch);
+            fwRule->port2 = atoi(pch);
+        }
+    }
 
     return fwRule;
 }
+
+
+
 
 
 void run_add_cmd(FwRequest* fwReq, FwRule* fwRuleHead)
@@ -410,6 +368,3 @@ void run_listen(CmdArg* pcmd)
 {
     printf("running listen on port %d\n", pcmd->port);
 }
-
-
-

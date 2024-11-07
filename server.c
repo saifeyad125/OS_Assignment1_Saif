@@ -9,7 +9,6 @@ void usage()
 // public static main(string[] args)
 int main(int argc, char** argv)
 {
-
     CmdArg  cmd;
     if(!process_args(argc, argv, &cmd)){
         usage();
