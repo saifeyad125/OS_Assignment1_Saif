@@ -79,14 +79,14 @@ bool is_integer(char* pch, int* num)
 }
 
 //adds a request to the end of the linked list
-void add_to_Req_list(FwRequest* fwReq, FwRequest* fwReqHead)
+void add_to_Req_list(FwRequest* fwReq, FwRequest** fwReqHead)
 {
-    if (fwReqHead == NULL)
+    if (*fwReqHead == NULL)
     {
-        fwReqHead = fwReq;
+        *fwReqHead = fwReq;
         return;
     }
-    FwRequest* cur = fwReqHead;
+    FwRequest* cur = *fwReqHead;
     while (cur->pNext != NULL)
     {
         cur = cur->pNext;
@@ -95,15 +95,15 @@ void add_to_Req_list(FwRequest* fwReq, FwRequest* fwReqHead)
 }
 
 //adds a rule to the end of the linked list
-void add_to_rule_list(FwRule* fwRule, FwRule* fwRuleHead)
+void add_to_rule_list(FwRule* fwRule, FwRule** fwRuleHead)
 {
     
-    if (fwRuleHead == NULL)
+    if (*fwRuleHead == NULL)
     {
-        fwRuleHead = fwRule;
+        *fwRuleHead = fwRule;
         return;
     }
-    FwRule* cur = fwRuleHead;
+    FwRule* cur = *fwRuleHead;
     while (cur->pNext != NULL)
     {
         cur = cur->pNext;
@@ -271,11 +271,11 @@ void run_add_cmd(FwRequest* fwReq, FwRule* fwRuleHead)
     FwRule* fwRule = process_rule_cmd(buffer);
 
     if (isValidRule(fwRule)){
-        add_to_rule_list(fwRule, fwRuleHead);
+        add_to_rule_list(fwRule, &fwRuleHead);
         printf("Rule added\n");
     }
     else{
-        printf("Invalid Rule\n");
+        printf("Illegal IP address or port Specified\n");
     }
     
 }
@@ -334,7 +334,7 @@ void run_interactive(CmdArg* pcmd)
         printf("Enter a command: ");
         fgets(buffer, 255, stdin);
         FwRequest* fwReq = process_cmd(buffer);
-        add_to_Req_list(fwReq, fwReqHead);
+        add_to_Req_list(fwReq, &fwReqHead);
         switch (fwReq->Cmd)
         {
         case 'A':
