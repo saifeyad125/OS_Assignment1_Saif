@@ -36,6 +36,7 @@ typedef struct FwRule
 
 typedef struct FwQuery
 {
+    char RawCmd[MAX_FW_CMD];
     unsigned char qiP[15];
     int qPort;
     struct FwQuery* pNext;
@@ -116,45 +117,65 @@ void add_to_rule_list(FwRule* fwRule, FwRule** fwRuleHead)
 
 
 bool isValidIP(FwRule* fwRule){
-    bool smaller = false;
     bool correctValues = true;
 
+    // we first check if values are within the range
     for (int i = 0; i < 4; i++) {
         if (fwRule->ip1[i] < 0 || fwRule->ip1[i] > 255 || fwRule->ip2[i] < 0 || fwRule->ip2[i] > 255) {
             correctValues = false;
             break;
         }
-        if (fwRule->ip1[i] < fwRule->ip2[i]) {
-            smaller = true;
-            break;
-        } else if (fwRule->ip1[i] > fwRule->ip2[i]) {
-            smaller = false;
+    }
+    
+    if (!correctValues) {
+        return false;
+    }
+
+    // If both ip are the same, return truw
+    bool sameIP = true;
+    for (int i = 0; i < 4; i++) {
+        if (fwRule->ip1[i] != fwRule->ip2[i]) {
+            sameIP = false;
             break;
         }
     }
+    if (sameIP) {
+        return true;
+    }
 
-    return smaller && correctValues;
+    // if ips are diff, check if ip1 < ip2
+    for (int i = 0; i < 4; i++) {
+        if (fwRule->ip1[i] < fwRule->ip2[i]) {
+            return true;
+        } 
+        else if (fwRule->ip1[i] > fwRule->ip2[i]) {
+            return false;
+        }
+    }
+    
+    return false;  // IPs are equal but we already handled that case
 }
 
 
 
 bool isValidPort(FwRule* fwRule){
-    bool correctValues = false;
-    bool smaller = false;
-
-    if (fwRule->port1 >= 0 && fwRule->port1 <= 65535 && fwRule->port2 >= 0 && fwRule->port2 <= 65535)
-    {
-        correctValues = true;
+    // first we check if theyre in the valid range
+    if (fwRule->port1 < 0 || fwRule->port1 > 65535 || 
+        fwRule->port2 < 0 || fwRule->port2 > 65535) {
+        return false;
     }
 
-    if (correctValues)
-    {
-        if (fwRule->port1 < fwRule->port2)
-        {
-            smaller = true;
-        }
+    // if we have one port
+    if (fwRule->port1 == fwRule->port2) {
+        return true;
     }
-    return smaller;
+
+    // if we have 2, port 1 < port 2
+    if (fwRule->port1 < fwRule->port2) {
+        return true;
+    }
+
+    return false;
 }
 
 
@@ -268,9 +289,8 @@ FwRule* process_rule_cmd(char* buffer)
 void run_add_cmd(FwRequest* fwReq, FwRule** fwRuleHead)
 {
     char buffer [255];
-    printf("running add\n");
     
-    printf("enter command\n");
+    printf("enter rule: \n");
     fgets(buffer, 255, stdin);
     FwRule* fwRule = process_rule_cmd(buffer);
 
@@ -331,6 +351,7 @@ FwQuery* process_query_cmd(char* buffer)
         exit(1);
     }
     fwQuery->pNext = NULL;
+    strcpy(fwQuery->RawCmd, buffer);
 
     //split the query by space
     char* pch = strtok(buffer, " ");
@@ -383,6 +404,37 @@ bool isValidQueryPort(FwQuery* fwQuery)
     return correctValues;
 }
 
+bool add_query_to_rule(FwRule* fwRule, FwQuery* fwQuery, FwQuery** fwqHead)
+{
+    if (*fwqHead == NULL)
+    {
+        *fwqHead = fwQuery;
+        fwRule->qHead = *fwqHead;
+        return true;
+    }
+    FwQuery* cur = *fwqHead;
+
+
+    while (cur != NULL)
+    {
+        //this means the query is already in the rule
+        if (strcmp(cur->RawCmd, fwQuery->RawCmd) == 0)
+        {
+            //we would continue the search thru the rules incase we find another rule
+            return false;
+        }
+        if (cur->pNext == NULL)
+        {
+            break;
+        }
+        cur = cur->pNext;
+    }
+    cur->pNext = fwQuery;
+    return true;
+}
+
+
+
 void searchThroughRules(FwQuery* fwQuery, FwRule* fwRuleHead)
 {
     bool found = false;
@@ -403,7 +455,10 @@ void searchThroughRules(FwQuery* fwQuery, FwRule* fwRuleHead)
     {
         printf("Rule Found\n");
         found = true;
-        return;
+        if (add_query_to_rule(cur, fwQuery, &cur->qHead))
+        {
+            printf("Query added to rule\n");
+        }
     }
     cur = cur->pNext;
     }
@@ -425,7 +480,6 @@ void run_check_cmd(FwRequest* fwReq, FwRequest* fwReqHead, FwRule* fwRuleHead)
     if (isValidQueryIP(fwQuery) && isValidQueryPort(fwQuery))
     {
        searchThroughRules(fwQuery, fwRuleHead);
-       printf("searching thru queries\n");
     }
     
 
