@@ -24,6 +24,7 @@ typedef struct FwRule
 {
     //ipAdress 1, 2
     //port 1, 2
+    char RawCmd[MAX_FW_CMD];
     unsigned char ip1[15];
     unsigned char ip2[15];
     int port1;
@@ -203,6 +204,8 @@ FwRule* process_rule_cmd(char* buffer)
     }
     fwRule->pNext = NULL;
     fwRule -> qHead = NULL;
+    strcpy(fwRule->RawCmd, buffer);
+
 
     // Initialize the fields
     memset(fwRule->ip1, 0, sizeof(fwRule->ip1));
@@ -262,7 +265,7 @@ FwRule* process_rule_cmd(char* buffer)
 
 
 
-void run_add_cmd(FwRequest* fwReq, FwRule* fwRuleHead)
+void run_add_cmd(FwRequest* fwReq, FwRule** fwRuleHead)
 {
     char buffer [255];
     printf("running add\n");
@@ -272,7 +275,7 @@ void run_add_cmd(FwRequest* fwReq, FwRule* fwRuleHead)
     FwRule* fwRule = process_rule_cmd(buffer);
 
     if (isValidRule(fwRule)){
-        add_to_rule_list(fwRule, &fwRuleHead);
+        add_to_rule_list(fwRule, fwRuleHead);
         printf("Rule added\n");
     }
     else{
@@ -290,6 +293,17 @@ void run_del_cmd(FwRequest* fwReq, FwRule* fwRuleHead)
 void run_list_cmd(FwRequest* fwReq, FwRule* fwRuleHead)
 {
     printf("running list\n");
+    FwRule* cur = fwRuleHead;
+    if (cur == NULL)
+    {
+        printf("No rules\n");
+        return;
+    }
+    while (cur != NULL)
+    {
+        printf("%s\n", cur->RawCmd);
+        cur = cur->pNext;
+    }
 }
 
 void run_list_requests_cmd(FwRequest* fwReq, FwRequest* fwReqHead)
@@ -302,7 +316,7 @@ void run_list_requests_cmd(FwRequest* fwReq, FwRequest* fwReqHead)
         printf("No requests\n");
         return;
     }
-    while (cur -> pNext != NULL)
+    while (cur != NULL)
     {
         printf("%s\n", cur->RawCmd);
         cur = cur->pNext;
@@ -371,6 +385,7 @@ bool isValidQueryPort(FwQuery* fwQuery)
 
 void searchThroughRules(FwQuery* fwQuery, FwRule* fwRuleHead)
 {
+    bool found = false;
     if (fwRuleHead == NULL)
     {
         printf("No rules\n");
@@ -378,10 +393,24 @@ void searchThroughRules(FwQuery* fwQuery, FwRule* fwRuleHead)
     }
     FwRule* cur = fwRuleHead;
 
-    while (cur->pNext != NULL){
-
+   while (cur != NULL) {
+    //here we would check if the query is within the rules
+    if (fwQuery->qPort >= cur->port1 && fwQuery->qPort <= cur->port2 &&
+        fwQuery->qiP[0] >= cur->ip1[0] && fwQuery->qiP[0] <= cur->ip2[0] &&
+        fwQuery->qiP[1] >= cur->ip1[1] && fwQuery->qiP[1] <= cur->ip2[1] &&
+        fwQuery->qiP[2] >= cur->ip1[2] && fwQuery->qiP[2] <= cur->ip2[2] &&
+        fwQuery->qiP[3] >= cur->ip1[3] && fwQuery->qiP[3] <= cur->ip2[3]) 
+    {
+        printf("Rule Found\n");
+        found = true;
+        return;
     }
-    printf("searching through rules\n");
+    cur = cur->pNext;
+    }
+    if (!found)
+    {
+        printf("No rule found\n");
+    }
 }
 
 
@@ -392,10 +421,10 @@ void run_check_cmd(FwRequest* fwReq, FwRequest* fwReqHead, FwRule* fwRuleHead)
     printf("enter query: \n");
     fgets(buffer, 255, stdin);
     FwQuery* fwQuery = process_query_cmd(buffer);
-    
+
     if (isValidQueryIP(fwQuery) && isValidQueryPort(fwQuery))
     {
-       // searchThroughRules(fwQuery, fwRuleHead);
+       searchThroughRules(fwQuery, fwRuleHead);
        printf("searching thru queries\n");
     }
     
@@ -431,7 +460,7 @@ void run_interactive(CmdArg* pcmd)
         switch (fwReq->Cmd)
         {
         case 'A':
-            run_add_cmd(fwReq, fwRuleHead);
+            run_add_cmd(fwReq, &fwRuleHead);
             break;
         case 'D':
             run_del_cmd(fwReq, fwRuleHead);
