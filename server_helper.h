@@ -5,8 +5,7 @@
 
 
 #define MAX_FW_CMD 255
-#define MAX_FW_RULE 255
-#define MAX_FW_QUERY 255
+
 
 typedef struct CmdArg
 {
@@ -31,14 +30,15 @@ typedef struct FwRule
     int port2;
 
     struct FwRule* pNext;
+    struct FwQuery* qHead; 
 } FwRule;
 
-typedef struct Query
+typedef struct FwQuery
 {
-    char rawQuery[MAX_FW_QUERY];
-    char query;
-    struct Query* pNext;
-} Query;
+    unsigned char qiP[15];
+    int qPort;
+    struct FwQuery* pNext;
+} FwQuery;
 
 
 bool is_digit(char c)
@@ -202,6 +202,7 @@ FwRule* process_rule_cmd(char* buffer)
         exit(1);
     }
     fwRule->pNext = NULL;
+    fwRule -> qHead = NULL;
 
     // Initialize the fields
     memset(fwRule->ip1, 0, sizeof(fwRule->ip1));
@@ -276,6 +277,7 @@ void run_add_cmd(FwRequest* fwReq, FwRule* fwRuleHead)
     }
     else{
         printf("Illegal IP address or port Specified\n");
+        free(fwRule);
     }
     
 }
@@ -307,9 +309,100 @@ void run_list_requests_cmd(FwRequest* fwReq, FwRequest* fwReqHead)
     }
 }
 
-void run_check_cmd(FwRequest* fwReq, FwRequest* fwReqHead)
+FwQuery* process_query_cmd(char* buffer)
 {
-    printf("running check\n");
+    FwQuery* fwQuery = (FwQuery*)malloc(sizeof(FwQuery));
+    if (fwQuery == NULL) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+    fwQuery->pNext = NULL;
+
+    //split the query by space
+    char* pch = strtok(buffer, " ");
+    if (pch == NULL) {
+        printf("Invalid Query\n");
+        free(fwQuery);
+        return NULL;
+    }
+
+    //process the IP address part
+    if (sscanf(pch, "%hhu.%hhu.%hhu.%hhu", &fwQuery->qiP[0], &fwQuery->qiP[1], &fwQuery->qiP[2], &fwQuery->qiP[3]) != 4) {
+            printf("Invalid IP address: %s\n", pch);
+            free(fwQuery);
+            return NULL;
+        }
+    
+    //process the port part
+    pch = strtok(NULL, " ");
+    if (pch != NULL) {
+        fwQuery->qPort = atoi(pch);
+    }
+    else{
+        printf("Invalid Query\n");
+        free(fwQuery);
+        return NULL;
+    }
+
+    return fwQuery;
+}
+
+bool isValidQueryIP(FwQuery* fwQuery)
+{
+    bool correctValues = true;
+    for (int i = 0; i < 4; i++) {
+        if (fwQuery->qiP[i] < 0 || fwQuery->qiP[i] > 255) {
+            correctValues = false;
+            break;
+        }
+    }
+    return correctValues;
+}
+
+bool isValidQueryPort(FwQuery* fwQuery)
+{
+    bool correctValues = false;
+    if (fwQuery->qPort >= 0 && fwQuery->qPort <= 65535)
+    {
+        correctValues = true;
+    }
+    return correctValues;
+}
+
+void searchThroughRules(FwQuery* fwQuery, FwRule* fwRuleHead)
+{
+    if (fwRuleHead == NULL)
+    {
+        printf("No rules\n");
+        return;
+    }
+    FwRule* cur = fwRuleHead;
+
+    while (cur->pNext != NULL){
+
+    }
+    printf("searching through rules\n");
+}
+
+
+
+void run_check_cmd(FwRequest* fwReq, FwRequest* fwReqHead, FwRule* fwRuleHead)
+{
+    char buffer[255];
+    printf("enter query: \n");
+    fgets(buffer, 255, stdin);
+    FwQuery* fwQuery = process_query_cmd(buffer);
+    
+    if (isValidQueryIP(fwQuery) && isValidQueryPort(fwQuery))
+    {
+       // searchThroughRules(fwQuery, fwRuleHead);
+       printf("searching thru queries\n");
+    }
+    
+
+
+
+
 }
 
 
@@ -350,7 +443,7 @@ void run_interactive(CmdArg* pcmd)
             run_list_requests_cmd(fwReq, fwReqHead);
             break;
         case 'C':
-            run_check_cmd(fwReq, fwReqHead);
+            run_check_cmd(fwReq, fwReqHead, fwRuleHead);
             break;
         case 'Q':
             //DO NOT FORGET TO FREE THE MEMORY
