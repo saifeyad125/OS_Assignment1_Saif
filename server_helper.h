@@ -299,7 +299,7 @@ void run_add_cmd(FwRequest* fwReq, FwRule** fwRuleHead)
         printf("Rule added\n");
     }
     else{
-        printf("Illegal IP address or port Specified\n");
+        printf("Invalid Rule\n");
         free(fwRule);
     }
     
@@ -464,7 +464,7 @@ void searchThroughRules(FwQuery* fwQuery, FwRule* fwRuleHead)
     }
     if (!found)
     {
-        printf("No rule found\n");
+        printf("Connection Rejected\n");
     }
 }
 
@@ -480,6 +480,11 @@ void run_check_cmd(FwRequest* fwReq, FwRequest* fwReqHead, FwRule* fwRuleHead)
     if (isValidQueryIP(fwQuery) && isValidQueryPort(fwQuery))
     {
        searchThroughRules(fwQuery, fwRuleHead);
+       printf("Connection Accepted\n");
+    }
+    else{
+        printf("Illegal IP address or port Specified\n");
+        free(fwQuery);
     }
     
 
