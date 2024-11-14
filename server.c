@@ -181,97 +181,99 @@ bool process_args(int argc, char** argv, CmdArg* pcmd)
 
 FwRule* process_rule_cmd(char* buffer)
 {
-   FwRule* fwRule = (FwRule*)malloc(sizeof(FwRule));
-   if (fwRule == NULL) {
-       printf("Memory allocation failed\n");
-       exit(1);
-   }
-   fwRule->pNext = NULL;
-   fwRule -> qHead = NULL;
-   strcpy(fwRule->RawCmd, buffer);
+    FwRule* fwRule = (FwRule*)malloc(sizeof(FwRule));
+    if (fwRule == NULL) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+    fwRule->pNext = NULL;
+    fwRule->qHead = NULL;
+    strcpy(fwRule->RawCmd, buffer);
 
+    // Initialize the fields
+    memset(fwRule->ip1, 0, sizeof(fwRule->ip1));
+    memset(fwRule->ip2, 0, sizeof(fwRule->ip2));
+    fwRule->port1 = 0;
+    fwRule->port2 = 0;
 
+    // Split the input string by spaces
+    char* pch = strtok(buffer, " ");
+    if (pch == NULL) {
+        printf("Invalid Rule\n");
+        free(fwRule);
+        return NULL;
+    }
 
+    // Process the IP address part
+    char* dashPos = strchr(pch, '-');
+    if (dashPos != NULL) {
+        *dashPos = '\0';
+        int ip1_parts[4], ip2_parts[4];
+        if (sscanf(pch, "%d.%d.%d.%d", &ip1_parts[0], &ip1_parts[1], &ip1_parts[2], &ip1_parts[3]) != 4) {
+            printf("Invalid IP address: %s\n", pch);
+            free(fwRule);
+            return NULL;
+        }
+        if (sscanf(dashPos + 1, "%d.%d.%d.%d", &ip2_parts[0], &ip2_parts[1], &ip2_parts[2], &ip2_parts[3]) != 4) {
+            printf("Invalid IP address: %s\n", dashPos + 1);
+            free(fwRule);
+            return NULL;
+        }
+        // Validate and assign IP parts
+        for (int i = 0; i < 4; i++) {
+            if (ip1_parts[i] < 0 || ip1_parts[i] > 255 || ip2_parts[i] < 0 || ip2_parts[i] > 255) {
+                printf("Invalid IP address: Out of range 0-255\n");
+                free(fwRule);
+                return NULL;
+            }
+            fwRule->ip1[i] = (uint8_t)ip1_parts[i];
+            fwRule->ip2[i] = (uint8_t)ip2_parts[i];
+        }
+    } else {
+        int ip_parts[4];
+        if (sscanf(pch, "%d.%d.%d.%d", &ip_parts[0], &ip_parts[1], &ip_parts[2], &ip_parts[3]) != 4) {
+            printf("Invalid IP address: %s\n", pch);
+            free(fwRule);
+            return NULL;
+        }
+        // Validate and assign IP parts
+        for (int i = 0; i < 4; i++) {
+            if (ip_parts[i] < 0 || ip_parts[i] > 255) {
+                printf("Invalid IP address: Out of range 0-255\n");
+                free(fwRule);
+                return NULL;
+            }
+            fwRule->ip1[i] = (uint8_t)ip_parts[i];
+        }
+        memcpy(fwRule->ip2, fwRule->ip1, sizeof(fwRule->ip1));
+    }
 
-   // Initialize the fields
-   memset(fwRule->ip1, 0, sizeof(fwRule->ip1));
-   memset(fwRule->ip2, 0, sizeof(fwRule->ip2));
-   fwRule->port1 = 0;
-   fwRule->port2 = 0;
+    // Process the port part
+    pch = strtok(NULL, " ");
+    if (pch == NULL) {
+        printf("Invalid Rule: Missing port\n");
+        free(fwRule);
+        return NULL;
+    }
 
+    dashPos = strchr(pch, '-');
+    if (dashPos != NULL) {
+        *dashPos = '\0';
+        if (!is_integer(pch, &fwRule->port1) || !is_integer(dashPos + 1, &fwRule->port2)) {
+            printf("Invalid port numbers\n");
+            free(fwRule);
+            return NULL;
+        }
+    } else {
+        if (!is_integer(pch, &fwRule->port1)) {
+            printf("Invalid port number\n");
+            free(fwRule);
+            return NULL;
+        }
+        fwRule->port2 = fwRule->port1;
+    }
 
-   // Split the input string by spaces
-   char* pch = strtok(buffer, " ");
-   if (pch == NULL) {
-       printf("Invalid Rule\n");
-       free(fwRule);
-       return NULL;
-   }
-
-
-   // Process the IP address part
-   char* dashPos = strchr(pch, '-');
-   if (dashPos != NULL) {
-   *dashPos = '\0';
-   int ip1_parts[4], ip2_parts[4];
-   if (sscanf(pch, "%d.%d.%d.%d", &ip1_parts[0], &ip1_parts[1], &ip1_parts[2], &ip1_parts[3]) != 4) {
-       printf("Invalid IP address: %s\n", pch);
-       free(fwRule);
-       return NULL;
-   }
-   if (sscanf(dashPos + 1, "%d.%d.%d.%d", &ip2_parts[0], &ip2_parts[1], &ip2_parts[2], &ip2_parts[3]) != 4) {
-       printf("Invalid IP address: %s\n", dashPos + 1);
-       free(fwRule);
-       return NULL;
-   }
-   // Validate and assign IP parts
-   for (int i = 0; i < 4; i++) {
-       if (ip1_parts[i] < 0 || ip1_parts[i] > 255 || ip2_parts[i] < 0 || ip2_parts[i] > 255) {
-           printf("Invalid IP address: Out of range 0-255\n");
-           free(fwRule);
-           return NULL;
-       }
-       fwRule->ip1[i] = (uint8_t)ip1_parts[i];
-       fwRule->ip2[i] = (uint8_t)ip2_parts[i];
-   }
-} else {
-   int ip_parts[4];
-   if (sscanf(pch, "%d.%d.%d.%d", &ip_parts[0], &ip_parts[1], &ip_parts[2], &ip_parts[3]) != 4) {
-       printf("Invalid IP address: %s\n", pch);
-       free(fwRule);
-       return NULL;
-   }
-   // Validate and assign IP parts
-   for (int i = 0; i < 4; i++) {
-       if (ip_parts[i] < 0 || ip_parts[i] > 255) {
-           printf("Invalid IP address: Out of range 0-255\n");
-           free(fwRule);
-           return NULL;
-       }
-       fwRule->ip1[i] = (uint8_t)ip_parts[i];
-   }
-   memcpy(fwRule->ip2, fwRule->ip1, sizeof(fwRule->ip1));
-}
-   // Process the port part
-   pch = strtok(NULL, " ");
-   if (dashPos != NULL) {
-   *dashPos = '\0';
-   if (!is_integer(pch, &fwRule->port1) || !is_integer(dashPos + 1, &fwRule->port2)) {
-       printf("Invalid port numbers\n");
-       free(fwRule);
-       return NULL;
-   }
-} else {
-   if (!is_integer(pch, &fwRule->port1)) {
-       printf("Invalid port number\n");
-       free(fwRule);
-       return NULL;
-   }
-   fwRule->port2 = fwRule->port1;
-}
-
-
-   return fwRule;
+    return fwRule;
 }
 
 
